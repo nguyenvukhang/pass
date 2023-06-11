@@ -25,10 +25,11 @@ pub const GPG_ID: &str = "AEFA1C1E59E02600E64E7C1D4A9E6CC722E4AA25";
 // ...
 // ───────────────────────────────────────────────────────────────────
 // Everything below is encrypted with the last key above it.
+//  * GNUPG private key id is unencrypted
 //  * ChaCha20 keys are encrypted with the choice of GNUPG's key
 //  * <key>:<value> pairs are encrypted with ChaCha20
 
-fn main() {
+fn debug() {
     let app = App::new().unwrap();
     let mut db = Database::new();
     db.insert("hello", "world");
@@ -37,4 +38,12 @@ fn main() {
     for i in db.list_all() {
         println!("{i} -> {:?}", db.get(&i));
     }
+}
+
+fn main() {
+    let use_debug = false;
+    if use_debug {
+        return debug();
+    }
+    cli::run()
 }

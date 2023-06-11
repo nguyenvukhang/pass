@@ -6,14 +6,7 @@ use rpassword::read_password;
 
 use std::io::Write;
 
-// store file plan:
-// ```
-// <One-time generated AES key><Last-used AES Nonce>  ←  encrypted with RSA
-// <key>:<value>
-// <key>:<value>
-// ...
-// ```
-
+// The CLI app structure. The list of arguments available to the CLI user.
 #[derive(Parser, Debug)]
 #[command(author)]
 struct Args {
@@ -24,19 +17,28 @@ struct Args {
     name: Option<String>,
 }
 
+// The sub-commands available. These describe actions that the user can take
+// to modify the database of passwords.
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Insert a new password
     Insert { name: String },
+
+    /// Edit a password
+    Edit { name: Option<String> },
+
+    /// Remove a name-password pair
+    Remove { name: Option<String> },
 }
 
-pub fn run_app() {
+/// Main entrypoint for CLI to start running. Powered by clap-rs.
+pub fn run() {
     let args = Args::parse();
 
     let app = match App::new() {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("Failed to create a pass.store.\nError: {e:?}");
+            eprintln!("Failed to read pass.store.\nError: {e:?}");
             return;
         }
     };
@@ -47,28 +49,44 @@ pub fn run_app() {
     }
 
     match args.command.unwrap() {
-        Commands::Insert { name } => {
-            let mut db = app.read().unwrap();
-            if db.has_name(&name) {
-                eprintln!("Database already has an entry for [{name}]");
-                return;
-            }
-            let mut stdout = std::io::stdout();
-
-            print!("Enter password for [{name}] > ");
-            stdout.flush().unwrap();
-            let p1 = read_password().unwrap();
-
-            print!("Retype password for [{name}] > ");
-            stdout.flush().unwrap();
-            let p2 = read_password().unwrap();
-
-            if p1 != p2 {
-                println!("Passwords dont match");
-                return;
-            }
-            db.insert(&name, &p1);
-            app.write(&db).unwrap();
-        }
+        Commands::Insert { name } => insert_password(app, name),
+        Commands::Edit { name } => edit_password(app, name),
+        Commands::Remove { name } => remove_password(app, name),
     }
 }
+
+/// Prompt the user twice for a password to insert
+fn insert_password(app: App, name: String) {
+    let mut db = app.read().unwrap();
+
+    if db.has_name(&name) {
+        eprintln!("Database already has an entry for [{name}]");
+        return;
+    }
+
+    let mut stdout = std::io::stdout();
+
+    print!("Enter password for [{name}] > ");
+    stdout.flush().unwrap();
+    let p1 = read_password().unwrap();
+
+    print!("Retype password for [{name}] > ");
+    stdout.flush().unwrap();
+    let p2 = read_password().unwrap();
+
+    if p1 != p2 {
+        println!("Passwords dont match");
+        return;
+    }
+
+    db.insert(&name, &p1);
+    app.write(&db).unwrap();
+}
+
+/// Use skim to select a context to edit,
+/// then open current password in a temporary $EDITOR buffer
+/// save the entire buffer as the password
+fn edit_password(app: App, name: Option<String>) {}
+
+/// Use skim to select a context to remove.
+fn remove_password(app: App, name: Option<String>) {}
