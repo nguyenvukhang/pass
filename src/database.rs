@@ -15,6 +15,10 @@ impl Database {
         self.pairs.contains_key(key)
     }
 
+    pub fn count(&self) -> usize {
+        self.pairs.len()
+    }
+
     pub fn list_all(&self) -> Vec<String> {
         self.pairs.iter().map(|v| v.0.to_string()).collect()
     }

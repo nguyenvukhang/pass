@@ -1,8 +1,11 @@
 use crate::{Error, Result, RsaCipher};
+
 use chacha20::cipher::KeyIvInit;
 use chacha20::ChaCha20;
 use rand::Rng;
+
 use std::ops::Range;
+use std::result::Result as SResult;
 
 pub const HEADER_BYTE_LEN: usize = 32 + 12;
 pub const HEADER_ENCODED_BYTE_LEN: usize = 512;
@@ -35,6 +38,10 @@ impl Header {
         Self::new(&chacha_key, &chacha_nonce)
     }
 
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.data
+    }
+
     pub fn chacha_key(&self) -> [u8; CHACHA_KEY_LEN] {
         self.data[CHACHA_KEY_RANGE].try_into().unwrap()
     }
@@ -64,5 +71,17 @@ impl Header {
 impl From<[u8; HEADER_BYTE_LEN]> for Header {
     fn from(data: [u8; HEADER_BYTE_LEN]) -> Self {
         Header { data }
+    }
+}
+
+impl TryFrom<&Vec<u8>> for Header {
+    type Error = Error;
+    fn try_from(data: &Vec<u8>) -> Result<Self> {
+        let mut fixed = [0u8; HEADER_BYTE_LEN];
+        if data.len() != HEADER_BYTE_LEN {
+            return Err(Error::RawBytesReadError);
+        }
+        fixed.copy_from_slice(&data);
+        Ok(Header { data: fixed })
     }
 }
