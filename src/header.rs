@@ -1,14 +1,12 @@
-use crate::{Error, Result, RsaCipher};
+use crate::{Error, Result};
 
 use chacha20::cipher::KeyIvInit;
 use chacha20::ChaCha20;
 use rand::Rng;
 
 use std::ops::Range;
-use std::result::Result as SResult;
 
 pub const HEADER_BYTE_LEN: usize = 32 + 12;
-pub const HEADER_ENCODED_BYTE_LEN: usize = 512;
 const CHACHA_KEY_LEN: usize = 32;
 const CHACHA_NONCE_LEN: usize = 12;
 const CHACHA_KEY_RANGE: Range<usize> = 0..32;
@@ -50,21 +48,8 @@ impl Header {
         self.data[CHACHA_NONCE_RANGE].try_into().unwrap()
     }
 
-    pub fn encrypt(&self, cipher: &RsaCipher) -> Result<Vec<u8>> {
-        cipher.encrypt(self.data)
-    }
-
     pub fn cipher(&self) -> ChaCha20 {
         ChaCha20::new(&self.chacha_key().into(), &self.chacha_nonce().into())
-    }
-
-    pub fn decrypt(
-        cipher: &RsaCipher,
-        enc_data: &[u8; HEADER_ENCODED_BYTE_LEN],
-    ) -> Result<Self> {
-        let dec_data = cipher.decrypt(enc_data)?;
-        let data = dec_data.try_into().map_err(|_| Error::BadLength)?;
-        Ok(Header { data })
     }
 }
 

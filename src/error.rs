@@ -4,7 +4,6 @@ pub enum Error {
     RsaError(rsa::Error),
     RsaPkcs1Error(rsa::pkcs1::Error),
     SerdeJsonError(serde_json::Error),
-    BadLength,
     RawBytesReadError
 }
 

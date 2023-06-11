@@ -6,6 +6,7 @@ pub struct Database {
     pairs: HashMap<String, String>,
 }
 
+#[allow(unused)]
 impl Database {
     pub fn new() -> Self {
         Self { pairs: HashMap::new() }

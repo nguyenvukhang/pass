@@ -1,12 +1,10 @@
 use crate::app::App;
+use crate::skim::skim;
 
 use clap::{Parser, Subcommand};
 use rpassword::read_password;
-use skim::prelude::*;
 
 use std::io::Write;
-
-pub const DATA_FILE: &str = "pass.store";
 
 // store file plan:
 // ```
@@ -32,7 +30,7 @@ enum Commands {
     Insert { name: String },
 }
 
-fn run_app() {
+pub fn run_app() {
     let args = Args::parse();
 
     let app = match App::new() {
@@ -74,53 +72,3 @@ fn run_app() {
         }
     }
 }
-
-fn main() {}
-
-struct Name(String);
-
-impl SkimItem for Name {
-    fn text(&self) -> Cow<str> {
-        Cow::Borrowed(&self.0)
-    }
-
-    fn preview(&self, _context: PreviewContext) -> ItemPreview {
-        ItemPreview::Text(self.0.to_string())
-    }
-}
-
-fn skim(app: App) {
-    let options = SkimOptionsBuilder::default()
-        .height(Some("10"))
-        .multi(false)
-        .no_clear(false)
-        .build()
-        .unwrap();
-
-    let db = app.read().unwrap();
-    let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) =
-        skim::prelude::bounded(db.count());
-    for name in db.list_all() {
-        let _ = tx_item.send(Arc::new(Name(name)));
-    }
-    drop(tx_item); // so that skim could know when to stop waiting for more items.
-
-    // `run_with` would read and show items from the stream
-    let selected = Skim::run_with(&options, Some(rx_item))
-        .and_then(|mut out| out.selected_items.pop());
-
-    let selected = match selected {
-        Some(v) => v,
-        None => return,
-    };
-
-    let name = selected.output();
-    let password = db.get_unchecked(&name);
-
-    print!("{} -> {}\n", name, password);
-}
-
-// openssl genrsa -out private_key.pem 4096
-// openssl rsa -in private_key.pem -out public_key.pem -pubout -outform PEM
-// openssl rsa -in private_key.pem -text -noout | less
-// ssh-keygen -y -f private_key.pem > id_rsa.pub

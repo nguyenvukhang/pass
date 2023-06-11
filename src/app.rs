@@ -1,48 +1,47 @@
 use crate::chacha_io::{ChaReader, ChaWriter};
 use crate::database::Database;
 use crate::gpg::Gpg;
-use crate::header::HEADER_ENCODED_BYTE_LEN;
-use crate::read_ext::{SizedRead, SizedWrite};
-use crate::{Header, Result, RsaCipher, DATA_FILE, GPG_ID};
+use crate::sized_io::{SizedRead, SizedWrite};
+use crate::{Header, Result, DATA_FILE, GPG_ID};
 
 use std::fs::File;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::io::ErrorKind;
 
-pub struct App {
-    cipher: RsaCipher,
-}
-
-const GPG_ID_BYTE_LENGTH: usize = 64;
+pub struct App {}
 
 impl App {
     pub fn new() -> Result<Self> {
-        let cipher = RsaCipher::new()?;
-        Ok(Self { cipher })
+        Ok(Self {})
     }
 
     pub fn read(&self) -> Result<Database> {
-        let mut file = match File::open(DATA_FILE) {
-            Err(e) => match e.kind() {
+        let file_open = File::open(DATA_FILE);
+
+        if let Err(error) = file_open {
+            match error.kind() {
+                // Create a database if none is found.
                 ErrorKind::NotFound => return Ok(Database::new()),
-                _ => return Err(e)?,
-            },
-            Ok(v) => v,
-        };
-        let gpg_id = file.sized_read()?;
+                // Only throw errors on other issues.
+                _ => return Err(error)?,
+            };
+        }
+        let mut reader = file_open.unwrap();
+
+        let gpg_id = reader.sized_read()?;
         let gpg_id = String::from_utf8_lossy(&gpg_id);
         let gpg_id = gpg_id.trim_matches(char::from(0));
         println!("using gpg id: {gpg_id}");
 
         let gpg = Gpg::new(gpg_id);
 
-        let enc_header_data = file.sized_read()?;
+        let enc_header_data = reader.sized_read()?;
         let header_data = gpg.decrypt(&enc_header_data)?;
         println!("buffer -> {:?}", header_data);
 
         let header = Header::try_from(&header_data)?;
 
         let cipher = header.cipher();
-        let reader = ChaReader::new(file, cipher);
+        let reader = ChaReader::new(reader, cipher);
 
         let db = serde_json::from_reader::<_, Database>(reader)?;
         Ok(db)

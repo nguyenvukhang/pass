@@ -5,8 +5,7 @@ mod database;
 mod error;
 mod gpg;
 mod header;
-mod read_ext;
-mod rsa_cipher;
+mod sized_io;
 mod skim;
 
 use app::App;
@@ -14,19 +13,20 @@ use database::Database;
 use error::{Error, Result};
 use header::Header;
 
-use rsa_cipher::RsaCipher;
-
 pub const DATA_FILE: &str = "pass.store";
 pub const GPG_ID: &str = "AEFA1C1E59E02600E64E7C1D4A9E6CC722E4AA25";
 
-// store file plan:
-// ```
-// <gnupg private key id to use (has to be for RSA)>
-// <One-time generated AES key><Last-used AES Nonce>  ←  encrypted with RSA
+// Data file structure
+// ───────────────────────────────────────────────────────────────────
+// <GNUPG private key id to use>
+// <One-time generated ChaCha20 key><ChaCha20 Nonce>
 // <key>:<value>
 // <key>:<value>
 // ...
-// ```
+// ───────────────────────────────────────────────────────────────────
+// Everything below is encrypted with the last key above it.
+//  * ChaCha20 keys are encrypted with the choice of GNUPG's key
+//  * <key>:<value> pairs are encrypted with ChaCha20
 
 fn main() {
     let app = App::new().unwrap();
@@ -38,8 +38,3 @@ fn main() {
         println!("{i} -> {:?}", db.get(&i));
     }
 }
-
-// openssl genrsa -out private_key.pem 4096
-// openssl rsa -in private_key.pem -out public_key.pem -pubout -outform PEM
-// openssl rsa -in private_key.pem -text -noout | less
-// ssh-keygen -y -f private_key.pem > id_rsa.pub

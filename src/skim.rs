@@ -14,7 +14,7 @@ impl SkimItem for Name {
     }
 }
 
-fn skim(app: App) {
+pub fn skim(app: App) {
     let options = SkimOptionsBuilder::default()
         .height(Some("10"))
         .multi(false)
