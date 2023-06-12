@@ -1,5 +1,3 @@
-use crate::database::Database;
-
 use skim::prelude::*;
 
 struct Name(String);
@@ -14,16 +12,25 @@ impl SkimItem for Name {
     }
 }
 
+/// Default options for skim
 fn options<'a>() -> Option<SkimOptions<'a>> {
-    SkimOptionsBuilder::default().height(Some("10")).build().ok()
+    SkimOptionsBuilder::default()
+        .height(Some("7"))
+        .select1(true)
+        .reverse(true)
+        .no_mouse(true)
+        .build()
+        .ok()
 }
 
 /// Use skim to select a choice in a list of strings
-pub fn select_one<I: Iterator<Item = String>>(choices: I) -> Option<String> {
+pub fn select_one(mut choices: Vec<String>) -> Option<String> {
     let opts = options()?;
     let (tx, rx): (SkimItemSender, SkimItemReceiver) = unbounded();
 
-    choices.for_each(|v| {
+    choices.sort();
+
+    choices.into_iter().for_each(|v| {
         let _ = tx.send(Arc::new(Name(v)));
     });
 
@@ -31,34 +38,8 @@ pub fn select_one<I: Iterator<Item = String>>(choices: I) -> Option<String> {
 
     Skim::run_with(&opts, Some(rx))
         .and_then(|mut out| match out.final_key {
-            Key::ESC => None,
+            Key::ESC | Key::Ctrl('c') => None,
             _ => out.selected_items.pop(),
         })
         .map(|v| v.output().to_string())
-}
-
-pub fn skim(db: Database) {
-    let options =
-        SkimOptionsBuilder::default().height(Some("10")).build().unwrap();
-
-    let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) =
-        skim::prelude::bounded(db.count());
-    for name in db.list_all() {
-        let _ = tx_item.send(Arc::new(Name(name)));
-    }
-    drop(tx_item); // so that skim could know when to stop waiting for more items.
-
-    // `run_with` would read and show items from the stream
-    let selected = Skim::run_with(&options, Some(rx_item))
-        .and_then(|mut out| out.selected_items.pop());
-
-    let selected = match selected {
-        Some(v) => v,
-        None => return,
-    };
-
-    let name = selected.output();
-    let password = db.get_unchecked(&name);
-
-    print!("{} -> {}\n", name, password);
 }

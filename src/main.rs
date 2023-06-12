@@ -1,5 +1,6 @@
 mod chacha_io;
 mod cli;
+mod clipboard;
 mod database;
 mod error;
 mod gpg;

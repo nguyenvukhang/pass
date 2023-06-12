@@ -1,6 +1,7 @@
 use crate::chacha_io::{ChaReader, ChaWriter};
 use crate::gpg::Gpg;
 use crate::sized_io::{SizedRead, SizedWrite};
+use crate::skim;
 use crate::{Header, Result, DATA_FILE, GPG_ID};
 
 use serde::{Deserialize, Serialize};
@@ -30,6 +31,10 @@ impl Database {
 
     pub fn list_all(&self) -> Vec<String> {
         self.pairs.iter().map(|v| v.0.to_string()).collect()
+    }
+
+    pub fn select_one(&self) -> Option<String> {
+        skim::select_one(self.pairs.iter().map(|v| v.0.to_string()).collect())
     }
 
     pub fn insert(&mut self, key: &str, value: &str) {

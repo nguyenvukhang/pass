@@ -1,9 +1,12 @@
-use crate::{database::Database, skim};
+use crate::{clipboard::clip, database::Database};
 
 use clap::{Parser, Subcommand};
+use rand::{distributions::Alphanumeric, Rng};
 use rpassword::read_password;
 
-use std::io::Write;
+const LINE: &str = "──────────────────────────────";
+
+use std::{fs, io::Write, path::PathBuf, process::Command};
 
 // The CLI app structure. The list of arguments available to the CLI user.
 #[derive(Parser, Debug)]
@@ -61,11 +64,25 @@ pub fn run() {
 }
 
 fn search_password(db: Database) {
-    let selection = skim::select_one(db.list_all().into_iter());
+    let selection = match db.select_one() {
+        None => return println!("Nothing selected"),
+        Some(v) => v,
+    };
+
+    println!("[{selection}]");
+
+    let data = db.get_unchecked(&selection);
+
+    if let Some((password, metadata)) = data.split_once('\n') {
+        println!("{metadata}");
+        clip::temp_write(password);
+    } else {
+        clip::temp_write(data);
+    }
     println!(
-        "selected: {selection:?} -> {:?}",
-        selection.as_ref().and_then(|v| db.get(&v))
-    );
+        "{LINE}\nCopied password to clipboard. Will reset after {} seconds.",
+        clip::RESTORE_DELAY
+    )
 }
 
 fn insert_password(mut db: Database, name: String, password: Option<String>) {
@@ -106,7 +123,88 @@ fn prompt_password_twice(name: &str) -> Option<String> {
 /// Use skim to select a context to edit,
 /// then open current password in a temporary $EDITOR buffer
 /// save the entire buffer as the password
-fn edit_password(db: Database, name: Option<String>) {}
+fn edit_password(mut db: Database, name: Option<String>) {
+    let name = match name.or_else(|| db.select_one()) {
+        None => return println!("No name selected to edit"),
+        Some(v) => v,
+    };
+
+    let old_value = match db.get(&name) {
+        None => return println!("No value found for [{name}]"),
+        Some(v) => v,
+    };
+
+    let editor = match get_editor() {
+        None => return println!("No editor found."),
+        Some(v) => v,
+    };
+
+    println!("using editor: {editor:?}");
+
+    let tmp_file = get_temp_file();
+    println!("using tmp file: {tmp_file:?}");
+
+    fs::write(&tmp_file, old_value.as_bytes()).unwrap();
+
+    edit_file(&editor, &tmp_file);
+    // TODO: shred this file or encrypt it, because this seems to be a
+    // weak point
+
+    let new_value = fs::read_to_string(&tmp_file).unwrap();
+
+    let _ = fs::remove_file(&tmp_file);
+
+    if old_value == &new_value {
+        return println!("No change required.");
+    } else {
+        println!("Update from:\n{old_value}\nTo:\n{new_value}");
+    }
+
+    db.update(&name, new_value.trim());
+    db.write().unwrap();
+}
 
 /// Use skim to select a context to remove.
-fn remove_password(db: Database, name: Option<String>) {}
+fn remove_password(mut db: Database, name: Option<String>) {
+    if let Some(name) = name {
+        db.remove(&name);
+        db.write().unwrap()
+    }
+}
+
+/// Get an installed editor
+fn get_editor() -> Option<PathBuf> {
+    use which::which;
+    if let Ok(v) = std::env::var("EDITOR") {
+        if let Ok(v) = which(v) {
+            return Some(PathBuf::from(v));
+        }
+    }
+    if let Ok(v) = which("nvim") {
+        return Some(v);
+    }
+    if let Ok(v) = which("vim") {
+        return Some(v);
+    }
+    if let Ok(v) = which("nano") {
+        return Some(v);
+    }
+    None
+}
+
+fn edit_file(editor: &PathBuf, filepath: &PathBuf) {
+    let mut cmd = Command::new(&editor);
+    cmd.arg(&filepath);
+    let child = cmd.spawn().unwrap();
+    let _ = child.wait_with_output();
+}
+
+/// Get a random filename for temporary buffer
+fn get_temp_file() -> PathBuf {
+    let random: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(32)
+        .map(char::from)
+        .collect();
+    std::env::temp_dir().join(&format!("pass.{random}"))
+}

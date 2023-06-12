@@ -14,3 +14,4 @@ chacha20 = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 clap = { version = "4.3", features = ["derive"] }
 rpassword = "7.2"
+which = "4.4"
