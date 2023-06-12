@@ -11,9 +11,6 @@ mod skim;
 use error::{Error, Result};
 use header::Header;
 
-pub const DATA_FILE: &str = "pass.store";
-// pub const GPG_ID: &str = "AEFA1C1E59E02600E64E7C1D4A9E6CC722E4AA25";
-
 // Data file structure
 // ───────────────────────────────────────────────────────────────────
 // <GNUPG private key id to use>

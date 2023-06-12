@@ -3,13 +3,14 @@ use crate::error::Error;
 use crate::gpg::Gpg;
 use crate::sized_io::{SizedRead, SizedWrite};
 use crate::skim;
-use crate::{Header, Result, DATA_FILE};
+use crate::{Header, Result};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io;
 use std::io::Read;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Database {
@@ -72,8 +73,17 @@ impl Database {
 
 /// Read/write operations
 impl Database {
+    fn default_dir() -> PathBuf {
+        dirs::config_dir().unwrap().join("pass")
+    }
+
+    pub fn default_location() -> PathBuf {
+        Database::default_dir().join("pass.store")
+    }
+
     pub fn read() -> Result<Self> {
-        Self::read_from_file(DATA_FILE)
+        let file = Database::default_location();
+        Self::read_from_file(&file)
     }
 
     fn read_gpg_id<R: Read>(reader: &mut R) -> Result<String> {
@@ -88,7 +98,7 @@ impl Database {
         Header::try_from(&header_data)
     }
 
-    pub fn read_from_file(data_file: &str) -> Result<Self> {
+    pub fn read_from_file(data_file: &PathBuf) -> Result<Self> {
         let mut reader = File::open(data_file).map_err(|e| match e.kind() {
             io::ErrorKind::NotFound => Error::DataFileNotFound,
             _ => Error::IoError(e),
@@ -115,7 +125,11 @@ impl Database {
             None => return Err(Error::GpgIdNotFound),
             Some(v) => v,
         };
-        let mut writer = File::create(DATA_FILE)?;
+        let dir = Database::default_dir();
+        if !dir.is_dir() {
+            fs::create_dir_all(dir)?;
+        }
+        let mut writer = File::create(Database::default_location())?;
 
         writer.sized_write(gpg_id.as_bytes())?;
 

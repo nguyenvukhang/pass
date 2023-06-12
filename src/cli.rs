@@ -30,6 +30,9 @@ enum Commands {
     #[command(name = "re-init")]
     Reinit { gpg_id: String },
 
+    /// Show the location of the current pass.store
+    Location,
+
     /// Insert a new password
     Insert {
         name: String,
@@ -74,6 +77,9 @@ pub fn run() -> Option<()> {
     match args.command.unwrap() {
         Commands::Init { gpg_id } => initialize_db(gpg_id),
         Commands::Reinit { gpg_id } => reinitialize_db(get_db()?, gpg_id),
+        Commands::Location => {
+            println!("database is at {}", pretty_location(),);
+        }
         Commands::Insert { name, password } => {
             insert_password(get_db()?, name, password)
         }
@@ -102,6 +108,16 @@ fn initialize_db(gpg_id: String) {
 fn reinitialize_db(mut db: Database, gpg_id: String) {
     db.set_gpg_id(&gpg_id);
     let _ = db.write();
+}
+
+fn pretty_location() -> String {
+    let path = Database::default_location();
+    let pretty = path.to_string_lossy();
+    if pretty.contains(' ') {
+        format!("'{pretty}'")
+    } else {
+        pretty.to_string()
+    }
 }
 
 fn search_password(db: Database) {
