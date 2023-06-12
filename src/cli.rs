@@ -1,4 +1,4 @@
-use crate::{clipboard::clip, database::Database, error::Error, gpg::Gpg};
+use crate::{clipboard::clip, database::Database, error::Error};
 
 use clap::{Parser, Subcommand};
 use rand::{distributions::Alphanumeric, Rng};

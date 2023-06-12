@@ -6,7 +6,6 @@ impl SkimItem for Name {
     fn text(&self) -> Cow<str> {
         Cow::Borrowed(&self.0)
     }
-
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
         ItemPreview::Text(self.0.to_string())
     }
@@ -17,6 +16,7 @@ fn options<'a>() -> Option<SkimOptions<'a>> {
     SkimOptionsBuilder::default()
         .height(Some("7"))
         .reverse(true)
+        .color(Some("hl:-1"))
         .no_mouse(true)
         .build()
         .ok()
