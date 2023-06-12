@@ -14,9 +14,13 @@ impl SkimItem for Name {
     }
 }
 
+fn options<'a>() -> Option<SkimOptions<'a>> {
+    SkimOptionsBuilder::default().height(Some("10")).build().ok()
+}
+
 /// Use skim to select a choice in a list of strings
 pub fn select_one<I: Iterator<Item = String>>(choices: I) -> Option<String> {
-    let opts = SkimOptionsBuilder::default().height(Some("10")).build().ok()?;
+    let opts = options()?;
     let (tx, rx): (SkimItemSender, SkimItemReceiver) = unbounded();
 
     choices.for_each(|v| {
@@ -26,7 +30,10 @@ pub fn select_one<I: Iterator<Item = String>>(choices: I) -> Option<String> {
     drop(tx); // so that skim could know when to stop waiting for more items.
 
     Skim::run_with(&opts, Some(rx))
-        .and_then(|mut out| out.selected_items.pop())
+        .and_then(|mut out| match out.final_key {
+            Key::ESC => None,
+            _ => out.selected_items.pop(),
+        })
         .map(|v| v.output().to_string())
 }
 

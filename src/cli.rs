@@ -44,7 +44,7 @@ pub fn run() {
     };
 
     if let None = args.command {
-        return search_password(db)
+        return search_password(db);
     }
 
     match args.command.unwrap() {
@@ -56,7 +56,10 @@ pub fn run() {
 
 fn search_password(db: Database) {
     let selection = skim::select_one(db.list_all().into_iter());
-    println!("selected -> {selection:?}");
+    println!(
+        "selected: {selection:?} -> {:?}",
+        selection.as_ref().and_then(|v| db.get(&v))
+    );
 }
 
 /// Prompt the user twice for a password to insert
