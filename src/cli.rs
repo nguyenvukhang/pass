@@ -1,4 +1,3 @@
-use crate::skim::skim;
 use crate::{database::Database, skim};
 
 use clap::{Parser, Subcommand};
@@ -22,7 +21,12 @@ struct Args {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Insert a new password
-    Insert { name: String },
+    Insert {
+        name: String,
+
+        #[arg(short, long)]
+        password: Option<String>,
+    },
 
     /// Edit a password
     Edit { name: Option<String> },
@@ -48,7 +52,9 @@ pub fn run() {
     }
 
     match args.command.unwrap() {
-        Commands::Insert { name } => insert_password(db, name),
+        Commands::Insert { name, password } => {
+            insert_password(db, name, password)
+        }
         Commands::Edit { name } => edit_password(db, name),
         Commands::Remove { name } => remove_password(db, name),
     }
@@ -62,13 +68,28 @@ fn search_password(db: Database) {
     );
 }
 
-/// Prompt the user twice for a password to insert
-fn insert_password(mut db: Database, name: String) {
+fn insert_password(mut db: Database, name: String, password: Option<String>) {
     if db.has_name(&name) {
         eprintln!("Database already has an entry for [{name}]");
         return;
     }
 
+    let password = match password {
+        Some(v) => v,
+        None => match prompt_password_twice(&name) {
+            Some(v) => v,
+            None => {
+                return println!("Passwords do not match.");
+            }
+        },
+    };
+
+    db.insert(&name, &password);
+    db.write().unwrap();
+}
+
+/// Prompt the user twice for a password to insert
+fn prompt_password_twice(name: &str) -> Option<String> {
     let mut stdout = std::io::stdout();
 
     print!("Enter password for [{name}] > ");
@@ -79,13 +100,7 @@ fn insert_password(mut db: Database, name: String) {
     stdout.flush().unwrap();
     let p2 = read_password().unwrap();
 
-    if p1 != p2 {
-        println!("Passwords dont match");
-        return;
-    }
-
-    db.insert(&name, &p1);
-    db.write().unwrap();
+    (p1 == p2).then_some(p1)
 }
 
 /// Use skim to select a context to edit,

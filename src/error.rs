@@ -4,7 +4,7 @@ pub enum Error {
     RsaError(rsa::Error),
     RsaPkcs1Error(rsa::pkcs1::Error),
     SerdeJsonError(serde_json::Error),
-    RawBytesReadError
+    RawBytesReadError,
 }
 
 macro_rules! error {
