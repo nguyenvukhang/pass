@@ -5,6 +5,8 @@ pub enum Error {
     RsaPkcs1Error(rsa::pkcs1::Error),
     SerdeJsonError(serde_json::Error),
     RawBytesReadError,
+    GpgIdNotFound,
+    DataFileNotFound,
 }
 
 macro_rules! error {

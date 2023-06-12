@@ -1,8 +1,9 @@
 use crate::chacha_io::{ChaReader, ChaWriter};
+use crate::error::Error;
 use crate::gpg::Gpg;
 use crate::sized_io::{SizedRead, SizedWrite};
 use crate::skim;
-use crate::{Header, Result, DATA_FILE, GPG_ID};
+use crate::{Header, Result, DATA_FILE};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,13 +13,20 @@ use std::io::Read;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Database {
+    #[serde(skip)]
+    gpg_id: Option<String>,
+
     pairs: HashMap<String, String>,
 }
 
 #[allow(unused)]
 impl Database {
     pub fn new() -> Self {
-        Self { pairs: HashMap::new() }
+        Self { gpg_id: None, pairs: HashMap::new() }
+    }
+
+    pub fn gpg_id(&self) -> Option<&String> {
+        self.gpg_id.as_ref()
     }
 
     pub fn has_name(&self, key: &str) -> bool {
@@ -77,45 +85,39 @@ impl Database {
     }
 
     pub fn read_from_file(data_file: &str) -> Result<Self> {
-        let file_open = File::open(data_file);
-
-        if let Err(error) = file_open {
-            match error.kind() {
-                // Create a database if none is found.
-                io::ErrorKind::NotFound => return Ok(Database::new()),
-                // Only throw errors on other issues.
-                _ => return Err(error)?,
-            };
-        }
-        let mut reader = file_open.unwrap();
+        let mut reader = File::open(data_file).map_err(|e| match e.kind() {
+            io::ErrorKind::NotFound => Error::DataFileNotFound,
+            _ => Error::IoError(e),
+        })?;
 
         let gpg_id = Self::read_gpg_id(&mut reader)?;
 
-        if gpg_id.is_empty() {
-            return Ok(Database::new());
-        }
-
         let gpg = Gpg::new(&gpg_id);
 
-        println!("using gpg id: [{gpg_id}]");
+        // println!("using gpg id: [{gpg_id}]");
 
         let header = Self::read_header(&mut reader, &gpg)?;
 
         // wrap the reader in the header's decryptor
         let reader = ChaReader::new(reader, header.cipher());
 
-        Ok(serde_json::from_reader::<_, Database>(reader)?)
+        let mut db = serde_json::from_reader::<_, Database>(reader)?;
+        db.gpg_id = Some(gpg_id);
+        Ok(db)
     }
 
     pub fn write(&self) -> Result<()> {
+        let gpg_id = match self.gpg_id() {
+            None => return Err(Error::GpgIdNotFound),
+            Some(v) => v,
+        };
         let mut writer = File::create(DATA_FILE)?;
 
-        writer.sized_write(&GPG_ID.as_bytes())?;
+        writer.sized_write(gpg_id.as_bytes())?;
 
-        let gpg = Gpg::new(GPG_ID);
+        let gpg = Gpg::new(gpg_id);
 
         let header = Header::generate();
-        println!("PRECODED -> {:?}", header.as_bytes());
 
         let enc_header_data = gpg.encrypt(header.as_bytes())?;
 

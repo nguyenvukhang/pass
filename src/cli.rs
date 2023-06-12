@@ -1,4 +1,4 @@
-use crate::{clipboard::clip, database::Database};
+use crate::{clipboard::clip, database::Database, error::Error, gpg::Gpg};
 
 use clap::{Parser, Subcommand};
 use rand::{distributions::Alphanumeric, Rng};
@@ -23,6 +23,9 @@ struct Args {
 // to modify the database of passwords.
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Create a new password store
+    Init { gpg_id: String },
+
     /// Insert a new password
     Insert {
         name: String,
@@ -44,22 +47,46 @@ pub fn run() {
 
     let db = match Database::read() {
         Ok(v) => v,
+        Err(Error::DataFileNotFound) => {
+            return eprintln!(
+                "Database not found. Run `pass init <gpg-id>` first."
+            );
+        }
         Err(e) => {
-            eprintln!("Failed to read pass.store.\nError: {e:?}");
-            return;
+            return eprintln!("Failed to read pass.store.\nError: {e:?}");
         }
     };
+
+    if let Some(name) = args.name {
+        return get_password(db, &name);
+    }
 
     if let None = args.command {
         return search_password(db);
     }
 
     match args.command.unwrap() {
+        Commands::Init { gpg_id } => initialize_db(db, gpg_id),
         Commands::Insert { name, password } => {
             insert_password(db, name, password)
         }
         Commands::Edit { name } => edit_password(db, name),
         Commands::Remove { name } => remove_password(db, name),
+    }
+}
+
+fn initialize_db(db: Database, gpg_id: String) {
+    if let Some(_) = db.gpg_id() {
+        return println!("Current database already has an owner id.");
+    }
+    println!("Creating new database using {gpg_id}");
+    let test = Command::new("gpg").args(["-K", &gpg_id]).output().unwrap();
+    let ok = String::from_utf8_lossy(&test.stdout).contains(&gpg_id);
+
+    if ok {
+        let _ = db.write();
+    } else {
+        println!("Invalid key id given. Try using `gpg -K` to show the available keys");
     }
 }
 
@@ -70,8 +97,14 @@ fn search_password(db: Database) {
     };
 
     println!("[{selection}]");
+    get_password(db, &selection)
+}
 
-    let data = db.get_unchecked(&selection);
+fn get_password(db: Database, name: &str) {
+    let data = match db.get(name) {
+        None => return println!("No password found for [{name}]"),
+        Some(v) => v,
+    };
 
     if let Some((password, metadata)) = data.split_once('\n') {
         println!("{metadata}");

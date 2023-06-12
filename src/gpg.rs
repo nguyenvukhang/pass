@@ -15,7 +15,7 @@ impl Gpg {
         let mut cmd = Command::new("gpg");
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
-        cmd.args(["--max-output=512", "--compress-algo=none"]);
+        cmd.args(["--compress-algo=none"]);
         cmd
     }
 
