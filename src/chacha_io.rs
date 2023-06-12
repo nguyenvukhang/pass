@@ -5,6 +5,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::result::Result as SResult;
 
+/// A decryption warapper for `io::Read`.
 pub struct ChaReader<R: Read> {
     src: R,
     cipher: ChaCha20,
@@ -24,14 +25,15 @@ impl<R: Read> Read for ChaReader<R> {
     }
 }
 
+/// A encryption warapper for `io::Write`.
 pub struct ChaWriter<W: Write> {
-    target: W,
+    dst: W,
     cipher: ChaCha20,
 }
 
 impl<W: Write> ChaWriter<W> {
-    pub fn new(target: W, cipher: ChaCha20) -> Self {
-        Self { target, cipher }
+    pub fn new(dst: W, cipher: ChaCha20) -> Self {
+        Self { dst, cipher }
     }
 }
 
@@ -39,10 +41,10 @@ impl<W: Write> Write for ChaWriter<W> {
     fn write(&mut self, buffer: &[u8]) -> SResult<usize, io::Error> {
         let mut buffer = buffer.to_vec();
         self.cipher.apply_keystream(&mut buffer);
-        self.target.write(&buffer)
+        self.dst.write(&buffer)
     }
 
     fn flush(&mut self) -> SResult<(), io::Error> {
-        self.target.flush()
+        self.dst.flush()
     }
 }

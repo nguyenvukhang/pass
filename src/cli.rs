@@ -1,4 +1,4 @@
-use crate::app::App;
+use crate::database::Database;
 use crate::skim::skim;
 
 use clap::{Parser, Subcommand};
@@ -35,7 +35,7 @@ enum Commands {
 pub fn run() {
     let args = Args::parse();
 
-    let app = match App::new() {
+    let db = match Database::read() {
         Ok(v) => v,
         Err(e) => {
             eprintln!("Failed to read pass.store.\nError: {e:?}");
@@ -44,21 +44,19 @@ pub fn run() {
     };
 
     if let None = args.command {
-        skim(app);
+        skim(db);
         return;
     }
 
     match args.command.unwrap() {
-        Commands::Insert { name } => insert_password(app, name),
-        Commands::Edit { name } => edit_password(app, name),
-        Commands::Remove { name } => remove_password(app, name),
+        Commands::Insert { name } => insert_password(db, name),
+        Commands::Edit { name } => edit_password(db, name),
+        Commands::Remove { name } => remove_password(db, name),
     }
 }
 
 /// Prompt the user twice for a password to insert
-fn insert_password(app: App, name: String) {
-    let mut db = app.read().unwrap();
-
+fn insert_password(mut db: Database, name: String) {
     if db.has_name(&name) {
         eprintln!("Database already has an entry for [{name}]");
         return;
@@ -80,13 +78,13 @@ fn insert_password(app: App, name: String) {
     }
 
     db.insert(&name, &p1);
-    app.write(&db).unwrap();
+    db.write().unwrap();
 }
 
 /// Use skim to select a context to edit,
 /// then open current password in a temporary $EDITOR buffer
 /// save the entire buffer as the password
-fn edit_password(app: App, name: Option<String>) {}
+fn edit_password(db: Database, name: Option<String>) {}
 
 /// Use skim to select a context to remove.
-fn remove_password(app: App, name: Option<String>) {}
+fn remove_password(db: Database, name: Option<String>) {}

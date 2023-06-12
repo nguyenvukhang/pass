@@ -1,4 +1,4 @@
-use crate::app::App;
+use crate::database::Database;
 
 use skim::prelude::*;
 
@@ -14,7 +14,7 @@ impl SkimItem for Name {
     }
 }
 
-pub fn skim(app: App) {
+pub fn skim(db: Database) {
     let options = SkimOptionsBuilder::default()
         .height(Some("10"))
         .multi(false)
@@ -22,7 +22,6 @@ pub fn skim(app: App) {
         .build()
         .unwrap();
 
-    let db = app.read().unwrap();
     let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) =
         skim::prelude::bounded(db.count());
     for name in db.list_all() {

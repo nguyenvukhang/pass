@@ -1,4 +1,3 @@
-mod app;
 mod chacha_io;
 mod cli;
 mod database;
@@ -8,7 +7,6 @@ mod header;
 mod sized_io;
 mod skim;
 
-use app::App;
 use database::Database;
 use error::{Error, Result};
 use header::Header;
@@ -30,11 +28,11 @@ pub const GPG_ID: &str = "AEFA1C1E59E02600E64E7C1D4A9E6CC722E4AA25";
 //  * <key>:<value> pairs are encrypted with ChaCha20
 
 fn debug() {
-    let app = App::new().unwrap();
     let mut db = Database::new();
     db.insert("hello", "world");
-    app.write(&db).unwrap();
-    let db = app.read().unwrap();
+    db.write().unwrap();
+
+    let db = Database::read().unwrap();
     for i in db.list_all() {
         println!("{i} -> {:?}", db.get(&i));
     }
