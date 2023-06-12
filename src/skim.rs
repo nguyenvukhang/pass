@@ -16,7 +16,6 @@ impl SkimItem for Name {
 fn options<'a>() -> Option<SkimOptions<'a>> {
     SkimOptionsBuilder::default()
         .height(Some("7"))
-        .select1(true)
         .reverse(true)
         .no_mouse(true)
         .build()

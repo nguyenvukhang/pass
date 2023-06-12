@@ -41,42 +41,46 @@ enum Commands {
     Remove { name: Option<String> },
 }
 
-/// Main entrypoint for CLI to start running. Powered by clap-rs.
-pub fn run() {
-    let args = Args::parse();
-
-    let db = match Database::read() {
-        Ok(v) => v,
+fn get_db() -> Option<Database> {
+    match Database::read() {
+        Ok(v) => Some(v),
         Err(Error::DataFileNotFound) => {
-            return eprintln!(
-                "Database not found. Run `pass init <gpg-id>` first."
-            );
+            eprintln!("Database not found. Run `pass init <gpg-id>` first.");
+            return None;
         }
         Err(e) => {
-            return eprintln!("Failed to read pass.store.\nError: {e:?}");
+            eprintln!("Failed to read pass.store.\nError: {e:?}");
+            return None;
         }
-    };
-
-    if let Some(name) = args.name {
-        return get_password(db, &name);
-    }
-
-    if let None = args.command {
-        return search_password(db);
-    }
-
-    match args.command.unwrap() {
-        Commands::Init { gpg_id } => initialize_db(db, gpg_id),
-        Commands::Insert { name, password } => {
-            insert_password(db, name, password)
-        }
-        Commands::Edit { name } => edit_password(db, name),
-        Commands::Remove { name } => remove_password(db, name),
     }
 }
 
-fn initialize_db(db: Database, gpg_id: String) {
-    if let Some(_) = db.gpg_id() {
+/// Main entrypoint for CLI to start running. Powered by clap-rs.
+pub fn run() -> Option<()> {
+    let args = Args::parse();
+
+    if let Some(name) = args.name {
+        return Some(get_password(get_db()?, &name));
+    }
+
+    if let None = args.command {
+        return Some(search_password(get_db()?));
+    }
+
+    match args.command.unwrap() {
+        Commands::Init { gpg_id } => initialize_db(gpg_id),
+        Commands::Insert { name, password } => {
+            insert_password(get_db()?, name, password)
+        }
+        Commands::Edit { name } => edit_password(get_db()?, name),
+        Commands::Remove { name } => remove_password(get_db()?, name),
+    };
+
+    Some(())
+}
+
+fn initialize_db(gpg_id: String) {
+    if Database::read().map_or(false, |v| v.gpg_id().is_some()) {
         return println!("Current database already has an owner id.");
     }
     println!("Creating new database using {gpg_id}");
@@ -84,7 +88,7 @@ fn initialize_db(db: Database, gpg_id: String) {
     let ok = String::from_utf8_lossy(&test.stdout).contains(&gpg_id);
 
     if ok {
-        let _ = db.write();
+        let _ = Database::new(Some(gpg_id)).write();
     } else {
         println!("Invalid key id given. Try using `gpg -K` to show the available keys");
     }

@@ -8,7 +8,6 @@ mod header;
 mod sized_io;
 mod skim;
 
-use database::Database;
 use error::{Error, Result};
 use header::Header;
 
@@ -28,21 +27,6 @@ pub const DATA_FILE: &str = "pass.store";
 //  * ChaCha20 keys are encrypted with the choice of GNUPG's key
 //  * <key>:<value> pairs are encrypted with ChaCha20
 
-fn debug() {
-    let mut db = Database::new();
-    db.insert("hello", "world");
-    db.write().unwrap();
-
-    let db = Database::read().unwrap();
-    for i in db.list_all() {
-        println!("{i} -> {:?}", db.get(&i));
-    }
-}
-
 fn main() {
-    let use_debug = false;
-    if use_debug {
-        return debug();
-    }
-    cli::run()
+    cli::run();
 }

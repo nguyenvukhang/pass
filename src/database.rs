@@ -21,8 +21,8 @@ pub struct Database {
 
 #[allow(unused)]
 impl Database {
-    pub fn new() -> Self {
-        Self { gpg_id: None, pairs: HashMap::new() }
+    pub fn new(gpg_id: Option<String>) -> Self {
+        Self { gpg_id, pairs: HashMap::new() }
     }
 
     pub fn gpg_id(&self) -> Option<&String> {
