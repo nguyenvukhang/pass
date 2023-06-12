@@ -26,6 +26,10 @@ enum Commands {
     /// Create a new password store
     Init { gpg_id: String },
 
+    /// Move ownership to new GPG key id
+    #[command(name = "re-init")]
+    Reinit { gpg_id: String },
+
     /// Insert a new password
     Insert {
         name: String,
@@ -69,6 +73,7 @@ pub fn run() -> Option<()> {
 
     match args.command.unwrap() {
         Commands::Init { gpg_id } => initialize_db(gpg_id),
+        Commands::Reinit { gpg_id } => reinitialize_db(get_db()?, gpg_id),
         Commands::Insert { name, password } => {
             insert_password(get_db()?, name, password)
         }
@@ -92,6 +97,11 @@ fn initialize_db(gpg_id: String) {
     } else {
         println!("Invalid key id given. Try using `gpg -K` to show the available keys");
     }
+}
+
+fn reinitialize_db(mut db: Database, gpg_id: String) {
+    db.set_gpg_id(&gpg_id);
+    let _ = db.write();
 }
 
 fn search_password(db: Database) {

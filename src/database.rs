@@ -29,6 +29,10 @@ impl Database {
         self.gpg_id.as_ref()
     }
 
+    pub fn set_gpg_id(&mut self, gpg_id: &str) {
+        self.gpg_id = Some(gpg_id.to_string())
+    }
+
     pub fn has_name(&self, key: &str) -> bool {
         self.pairs.contains_key(key)
     }
