@@ -85,9 +85,14 @@ impl Database {
         let mut reader = file_open.unwrap();
 
         let gpg_id = Self::read_gpg_id(&mut reader)?;
+
+        if gpg_id.is_empty() {
+            return Ok(Database::new());
+        }
+
         let gpg = Gpg::new(&gpg_id);
 
-        // println!("using gpg id: {gpg_id}");
+        println!("using gpg id: [{gpg_id}]");
 
         let header = Self::read_header(&mut reader, &gpg)?;
 

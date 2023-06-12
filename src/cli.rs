@@ -1,5 +1,5 @@
-use crate::database::Database;
 use crate::skim::skim;
+use crate::{database::Database, skim};
 
 use clap::{Parser, Subcommand};
 use rpassword::read_password;
@@ -44,8 +44,7 @@ pub fn run() {
     };
 
     if let None = args.command {
-        skim(db);
-        return;
+        return search_password(db)
     }
 
     match args.command.unwrap() {
@@ -53,6 +52,11 @@ pub fn run() {
         Commands::Edit { name } => edit_password(db, name),
         Commands::Remove { name } => remove_password(db, name),
     }
+}
+
+fn search_password(db: Database) {
+    let selection = skim::select_one(db.list_all().into_iter());
+    println!("selected -> {selection:?}");
 }
 
 /// Prompt the user twice for a password to insert
