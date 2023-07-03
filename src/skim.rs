@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use skim::prelude::*;
 
 struct Name(String);
@@ -24,18 +26,14 @@ fn options<'a>() -> Option<SkimOptions<'a>> {
 
 /// Use skim to select a choice in a list of strings
 pub fn select_one(mut choices: Vec<String>) -> Option<String> {
-    let opts = options()?;
-    let (tx, rx): (SkimItemSender, SkimItemReceiver) = unbounded();
-
     choices.sort();
 
-    choices.into_iter().for_each(|v| {
-        let _ = tx.send(Arc::new(Name(v)));
-    });
+    let input = choices.join("\n");
+    let item_reader = SkimItemReader::default();
+    let items = item_reader.of_bufread(Cursor::new(input));
 
-    drop(tx); // so that skim could know when to stop waiting for more items.
-
-    Skim::run_with(&opts, Some(rx))
+    println!("----------------------");
+    Skim::run_with(&options()?, Some(items))
         .and_then(|mut out| match out.final_key {
             Key::ESC | Key::Ctrl('c') => None,
             _ => out.selected_items.pop(),
