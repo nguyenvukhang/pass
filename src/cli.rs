@@ -202,11 +202,7 @@ fn edit_password(mut db: Database, name: Option<String>) {
         Some(v) => v,
     };
 
-    println!("using editor: {editor:?}");
-
     let tmp_file = get_temp_file();
-    println!("using tmp file: {tmp_file:?}");
-
     fs::write(&tmp_file, old_value.as_bytes()).unwrap();
 
     edit_file(&editor, &tmp_file);
@@ -229,10 +225,12 @@ fn edit_password(mut db: Database, name: Option<String>) {
 
 /// Use skim to select a context to remove.
 fn remove_password(mut db: Database, name: Option<String>) {
-    if let Some(name) = name {
-        db.remove(&name);
-        db.write().unwrap()
-    }
+    let name = match name.or_else(|| db.select_one()) {
+        None => return println!("No name selected to edit"),
+        Some(v) => v,
+    };
+    db.remove(&name);
+    db.write().unwrap()
 }
 
 /// Get an installed editor
