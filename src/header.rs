@@ -64,6 +64,7 @@ impl TryFrom<&Vec<u8>> for Header {
     fn try_from(data: &Vec<u8>) -> Result<Self> {
         let mut fixed = [0u8; HEADER_BYTE_LEN];
         if data.len() != HEADER_BYTE_LEN {
+            // TODO: fix. This curernt shows when the gpg key is not set yet
             return Err(Error::RawBytesReadError);
         }
         fixed.copy_from_slice(&data);

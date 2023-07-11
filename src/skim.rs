@@ -32,7 +32,6 @@ pub fn select_one(mut choices: Vec<String>) -> Option<String> {
     let item_reader = SkimItemReader::default();
     let items = item_reader.of_bufread(Cursor::new(input));
 
-    println!("----------------------");
     Skim::run_with(&options()?, Some(items))
         .and_then(|mut out| match out.final_key {
             Key::ESC | Key::Ctrl('c') => None,
