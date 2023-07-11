@@ -111,7 +111,7 @@ fn reinitialize_db(mut db: Database, gpg_id: String) {
 }
 
 fn pretty_location() -> String {
-    let path = Database::default_location();
+    let path = Database::path();
     let pretty = path.to_string_lossy();
     if pretty.contains(' ') {
         format!("'{pretty}'")

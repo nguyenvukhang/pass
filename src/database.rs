@@ -8,9 +8,9 @@ use crate::{Header, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io;
 use std::io::Read;
 use std::path::PathBuf;
+use std::{env, io};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Database {
@@ -77,13 +77,17 @@ impl Database {
         dirs::config_dir().unwrap().join("pass")
     }
 
-    pub fn default_location() -> PathBuf {
-        Database::default_dir().join("pass.store")
+    pub fn path() -> PathBuf {
+        const FILENAME: &str = "pass.store";
+        if let Ok(pass_dir) = env::var("PASSWORD_STORE_DIR") {
+            PathBuf::from(pass_dir).join(FILENAME)
+        } else {
+            Database::default_dir().join(FILENAME)
+        }
     }
 
     pub fn read() -> Result<Self> {
-        let file = Database::default_location();
-        Self::read_from_file(&file)
+        Self::read_from_file(&Database::path())
     }
 
     fn read_gpg_id<R: Read>(reader: &mut R) -> Result<String> {
@@ -129,7 +133,7 @@ impl Database {
         if !dir.is_dir() {
             fs::create_dir_all(dir)?;
         }
-        let mut writer = File::create(Database::default_location())?;
+        let mut writer = File::create(Database::path())?;
 
         writer.sized_write(gpg_id.as_bytes())?;
 
