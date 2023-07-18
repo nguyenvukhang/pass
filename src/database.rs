@@ -66,8 +66,8 @@ impl Database {
         self.pairs.insert(key.to_string(), value.to_string());
     }
 
-    pub fn remove(&mut self, key: &str) {
-        self.pairs.remove(key);
+    pub fn remove(&mut self, key: &str) -> Option<String> {
+        self.pairs.remove(key)
     }
 }
 

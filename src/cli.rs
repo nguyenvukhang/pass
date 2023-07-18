@@ -41,6 +41,9 @@ enum Commands {
         password: Option<String>,
     },
 
+    /// Rename a password
+    Move { current: String, next: String },
+
     /// Edit a password
     Edit { name: Option<String> },
 
@@ -83,6 +86,7 @@ pub fn run() -> Option<()> {
         Commands::Insert { name, password } => {
             insert_password(get_db()?, name, password)
         }
+        Commands::Move { current, next } => rename(get_db()?, current, next),
         Commands::Edit { name } => edit_password(get_db()?, name),
         Commands::Remove { name } => remove_password(get_db()?, name),
     };
@@ -166,6 +170,13 @@ fn insert_password(mut db: Database, name: String, password: Option<String>) {
 
     db.insert(&name, &password);
     db.write().unwrap();
+}
+
+fn rename(mut db: Database, current: String, next: String) {
+    if let Some(password) = db.remove(&current) {
+        db.insert(&next, &password);
+        db.write().unwrap();
+    }
 }
 
 /// Prompt the user twice for a password to insert
