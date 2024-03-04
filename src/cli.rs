@@ -81,7 +81,7 @@ pub fn run() -> Option<()> {
         Commands::Init { gpg_id } => initialize_db(gpg_id),
         Commands::Reinit { gpg_id } => reinitialize_db(get_db()?, gpg_id),
         Commands::Location => {
-            println!("database is at {}", pretty_location(),);
+            println!("database is at {}", pretty_location());
         }
         Commands::Insert { name, password } => {
             insert_password(get_db()?, name, password)
@@ -226,8 +226,6 @@ fn edit_password(mut db: Database, name: Option<String>) {
 
     if old_value == &new_value {
         return println!("No change required.");
-    } else {
-        println!("Update from:\n{old_value}\nTo:\n{new_value}");
     }
 
     db.update(&name, new_value.trim());
