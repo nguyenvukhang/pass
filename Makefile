@@ -14,8 +14,9 @@ run:
 	$(PASS)
 
 install:
-	make build
-	make load-bin
+	cargo install --path . --locked
+	# make build
+	# make load-bin
 
 build:
 	cargo build --release
