@@ -50,6 +50,8 @@ impl Gpg {
         let child = match cmd.spawn() {
             Ok(v) => v,
             Err(e) => {
+                eprintln!("GPG might not be installed.");
+                eprintln!("Run `brew install gnupg` to install it.");
                 let _ = fs::remove_file(&tmp_path);
                 return Err(e);
             }
