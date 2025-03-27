@@ -87,7 +87,9 @@ impl Database {
     }
 
     pub fn read() -> Result<Self> {
-        Self::read_from_file(&Database::path())
+        let db_path = Database::path();
+        eprintln!("--> {db_path:?}");
+        Self::read_from_file(&db_path)
     }
 
     fn read_gpg_id<R: Read>(reader: &mut R) -> Result<String> {
@@ -97,8 +99,11 @@ impl Database {
     }
 
     fn read_header<R: Read>(reader: &mut R, gpg: &Gpg) -> Result<Header> {
+        eprintln!("Get encoded data...");
         let enc_header_data = reader.sized_read()?;
+        eprintln!("Decode header data...");
         let header_data = gpg.decrypt(&enc_header_data)?;
+        eprintln!("Build header...");
         Header::try_from(&header_data)
     }
 
@@ -108,14 +113,18 @@ impl Database {
             _ => Error::IoError(e),
         })?;
 
+        eprintln!("Reading GPG ID...");
         let gpg_id = Self::read_gpg_id(&mut reader)?;
 
+        eprintln!("Creating GPG...");
         let gpg = Gpg::new(&gpg_id);
 
-        // println!("using gpg id: [{gpg_id}]");
+        eprintln!("using GPG ID: [{gpg_id}]");
 
+        eprintln!("Reading header...");
         let header = Self::read_header(&mut reader, &gpg)?;
 
+        eprintln!("getting reader...");
         // wrap the reader in the header's decryptor
         let reader = ChaReader::new(reader, header.cipher());
 
